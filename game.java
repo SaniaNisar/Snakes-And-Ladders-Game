@@ -1,149 +1,178 @@
-import java.util.*;
+import javax.swing.*;
+import java.awt.*;
+import java.awt.event.ActionEvent;
+import java.awt.event.ActionListener;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.Random;
 
-// Player Class
-class Player {
-    private String name;
-    private int currentPosition;
+public class SnakesAndLaddersGame extends JFrame {
 
-    public Player(String name) {
-        this.name = name;
-        this.currentPosition = 0; // Start at position 0
+    private JPanel boardPanel;
+    private JButton rollDiceButton;
+    private JLabel diceResultLabel;
+    private JLabel turnLabel;
+    private JLabel[] playerLabels;
+
+    private static final int BOARD_SIZE = 100;
+    private static final Map<Integer, Integer> snakes = new HashMap<>();
+    private static final Map<Integer, Integer> ladders = new HashMap<>();
+    private int currentPlayerIndex = 0;
+    private int[] playerPositions;
+    private String[] playerNames;
+    private Random random = new Random();
+
+    public SnakesAndLaddersGame(String[] names) {
+        this.playerNames = names;
+        setTitle("Snakes and Ladders Game");
+        setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+        setSize(600, 800);
+        setResizable(false);
+        setLocationRelativeTo(null);
+
+        initializeComponents();
+        setupBoard();
+        setupSnakesAndLadders();
+
+        setVisible(true);
     }
 
-    public String getName() {
-        return name;
+    private void initializeComponents() {
+        JPanel mainPanel = new JPanel();
+        mainPanel.setLayout(new BorderLayout());
+
+        boardPanel = new JPanel();
+        boardPanel.setLayout(new GridLayout(10, 10));
+
+        rollDiceButton = new JButton("Roll Dice");
+        rollDiceButton.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                int diceRoll = rollDice();
+                diceResultLabel.setText("Dice Rolled: " + diceRoll);
+                movePlayer(diceRoll);
+            }
+        });
+
+        diceResultLabel = new JLabel("Dice Rolled: ");
+        diceResultLabel.setHorizontalAlignment(SwingConstants.CENTER);
+
+        JPanel controlPanel = new JPanel();
+        controlPanel.add(rollDiceButton);
+        controlPanel.add(diceResultLabel);
+
+        mainPanel.add(boardPanel, BorderLayout.CENTER);
+        mainPanel.add(controlPanel, BorderLayout.SOUTH);
+
+        add(mainPanel);
     }
 
-    public int getCurrentPosition() {
-        return currentPosition;
-    }
+    private void setupBoard() {
+        boardPanel.removeAll();
+        boardPanel.setBorder(BorderFactory.createLineBorder(Color.BLACK));
 
-    public void setCurrentPosition(int position) {
-        this.currentPosition = position;
-    }
-}
+        int position = 100;
+        playerPositions = new int[playerNames.length];
+        playerLabels = new JLabel[playerNames.length];
 
-// Board Class
-class Board {
-    private int[] board;
-    private int size;
+        for (int row = 0; row < 10; row++) {
+            for (int col = 0; col < 10; col++) {
+                JLabel label = new JLabel(String.valueOf(position), JLabel.CENTER);
+                label.setBorder(BorderFactory.createLineBorder(Color.BLACK));
+                boardPanel.add(label);
+                position--;
 
-    public Board(int size) {
-        this.size = size;
-        board = new int[size];
-        initializeBoard();
-    }
-
-    private void initializeBoard() {
-        // Initialize board with normal positions (0), snakes (-1), and ladders (+1)
-        Arrays.fill(board, 0);
-        // Example snakes and ladders positions
-        board[14] = -10; // Snake at position 14, moves down to position 4
-        board[8] = 10;   // Ladder at position 8, moves up to position 18
-    }
-
-    public int getPosition(int index) {
-        return board[index];
-    }
-
-    public int getSize() {
-        return size;
-    }
-}
-
-// Game Class
-class Game {
-    private Player[] players;
-    private Board board;
-    private int currentPlayerIndex;
-    private boolean gameOver;
-
-    public Game(String[] playerNames, int boardSize) {
-        players = new Player[playerNames.length];
-        for (int i = 0; i < playerNames.length; i++) {
-            players[i] = new Player(playerNames[i]);
+                if (position == 0)
+                    break;
+            }
         }
-        board = new Board(boardSize);
-        currentPlayerIndex = 0; // Start with the first player
-        gameOver = false;
+
+        for (int i = 0; i < playerNames.length; i++) {
+            playerLabels[i] = new JLabel(playerNames[i]);
+            boardPanel.add(playerLabels[i]);
+        }
+
+        pack();
     }
 
-    public void playTurn() {
-        if (!gameOver) {
-            Player currentPlayer = players[currentPlayerIndex];
-            int diceRoll = rollDice();
-            int newPosition = currentPlayer.getCurrentPosition() + diceRoll;
-            int finalPosition = calculateFinalPosition(newPosition);
-            currentPlayer.setCurrentPosition(finalPosition);
-            printPlayerMove(currentPlayer, diceRoll, finalPosition);
-            checkWinCondition(currentPlayer);
-            if (!gameOver) {
-                currentPlayerIndex = (currentPlayerIndex + 1) % players.length;
+    private void setupSnakesAndLadders() {
+        // Define the positions of snakes and ladders
+        snakes.put(16, 6);
+        snakes.put(47, 26);
+        snakes.put(49, 11);
+        snakes.put(56, 53);
+        snakes.put(62, 19);
+        snakes.put(64, 60);
+        snakes.put(87, 24);
+        snakes.put(93, 73);
+        snakes.put(95, 75);
+        snakes.put(98, 78);
+
+        ladders.put(1, 38);
+        ladders.put(4, 14);
+        ladders.put(9, 31);
+        ladders.put(21, 42);
+        ladders.put(28, 84);
+        ladders.put(36, 44);
+        ladders.put(51, 67);
+        ladders.put(71, 91);
+        ladders.put(80, 100);
+    }
+
+    private int rollDice() {
+        return random.nextInt(6) + 1;
+    }
+
+    private void movePlayer(int steps) {
+        int currentPosition = playerPositions[currentPlayerIndex];
+        int newPosition = currentPosition + steps;
+
+        if (newPosition <= BOARD_SIZE) {
+            playerPositions[currentPlayerIndex] = newPosition;
+
+            // Check for snakes
+            if (snakes.containsKey(newPosition)) {
+                newPosition = snakes.get(newPosition);
+                JOptionPane.showMessageDialog(this, "Oops! " + playerNames[currentPlayerIndex] + " encountered a snake at position " + newPosition + ". Moving down to position " + newPosition + ".");
+                playerPositions[currentPlayerIndex] = newPosition;
+            }
+
+            // Check for ladders
+            if (ladders.containsKey(newPosition)) {
+                newPosition = ladders.get(newPosition);
+                JOptionPane.showMessageDialog(this, "Yay! " + playerNames[currentPlayerIndex] + " found a ladder at position " + newPosition + ". Moving up to position " + newPosition + ".");
+                playerPositions[currentPlayerIndex] = newPosition;
+            }
+
+            updatePlayerLabels();
+            currentPlayerIndex = (currentPlayerIndex + 1) % playerNames.length;
+
+            turnLabel.setText(playerNames[currentPlayerIndex] + "'s turn");
+        } else {
+            JOptionPane.showMessageDialog(this, "You need " + (BOARD_SIZE - currentPosition) + " to win. Keep trying!");
+        }
+    }
+
+    private void updatePlayerLabels() {
+        for (int i = 0; i < playerLabels.length; i++) {
+            int position = playerPositions[i];
+            if (position <= BOARD_SIZE) {
+                playerLabels[i].setText(playerNames[i] + " at position " + position);
+            } else {
+                playerLabels[i].setText(playerNames[i] + " won!");
             }
         }
     }
 
-    private int rollDice() {
-        return (int) (Math.random() * 6) + 1; // Simulates a dice roll between 1 and 6
-    }
-
-private int calculateFinalPosition(int newPosition) {
-    if (newPosition >= board.getSize()) {
-        return board.getSize() - 1; // Ensure player doesn't move beyond board size
-    }
-    int positionModifier = board.getPosition(newPosition);
-    int finalPosition = newPosition + positionModifier;
-
-    // Check if final position is within board bounds
-    if (finalPosition < 0) {
-        finalPosition = 0; // Prevent moving below position 0 (beginning of board)
-    } else if (finalPosition >= board.getSize()) {
-        finalPosition = board.getSize() - 1; // Ensure player doesn't move beyond board size
-    }
-
-    return finalPosition;
-}
-
-
-    private void printPlayerMove(Player player, int diceRoll, int finalPosition) {
-        System.out.println(player.getName() + " rolled a " + diceRoll +
-                " and moved from " + player.getCurrentPosition() + " to " + finalPosition);
-    }
-
-    private void checkWinCondition(Player player) {
-        if (player.getCurrentPosition() >= board.getSize() - 1) {
-            System.out.println(player.getName() + " wins the game!");
-            gameOver = true;
-        }
-    }
-
-    public boolean isGameOver() {
-        return gameOver;
-    }
-
-    public String getCurrentPlayerName() {
-        return players[currentPlayerIndex].getName();
-    }
-}
-
-// Main Class
-public class SnakesAndLaddersGame {
     public static void main(String[] args) {
-        Scanner scanner = new Scanner(System.in);
-
-        System.out.println("Welcome to Snakes and Ladders!");
-
-        // Initialize game with two players and a board of size 100
-        String[] playerNames = {"Player 1", "Player 2"};
-        Game game = new Game(playerNames, 100);
-
-        // Game loop
-        while (!game.isGameOver()) {
-            System.out.println("\nIt's " + game.getCurrentPlayerName() + "'s turn. Press enter to roll the dice.");
-            scanner.nextLine(); // Wait for user to press enter
-            game.playTurn();
-        }
-
-        scanner.close();
+        SwingUtilities.invokeLater(new Runnable() {
+            public void run() {
+                String[] playerNames = new String[2]; // Adjust for more players if needed
+                for (int i = 0; i < playerNames.length; i++) {
+                    playerNames[i] = JOptionPane.showInputDialog("Enter Player " + (i + 1) + "'s Name:");
+                }
+                new SnakesAndLaddersGame(playerNames);
+            }
+        });
     }
 }
